@@ -6,8 +6,8 @@
     <title>Chat with AI</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+            font-family: 'Poppins', sans-serif;
+            background: #e3f2fd;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -15,55 +15,75 @@
             margin: 0;
         }
         .chat-container {
-            width: 400px;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 420px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             overflow: hidden;
             display: flex;
             flex-direction: column;
         }
         .chat-box {
             flex: 1;
-            padding: 20px;
+            padding: 15px;
             overflow-y: auto;
-            border-bottom: 1px solid #ddd;
+            max-height: 400px;
+            scrollbar-width: thin;
+            scrollbar-color: #90caf9 #ffffff;
         }
         .chat-message {
-            margin-bottom: 15px;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            max-width: 75%;
         }
         .user-message {
+            background: #007bff;
+            color: #fff;
+            align-self: flex-end;
             text-align: right;
-            color: #007bff;
         }
         .ai-message {
-            text-align: left;
+            background: #f1f1f1;
             color: #333;
+            align-self: flex-start;
+            text-align: left;
         }
         .input-box {
             display: flex;
+            padding: 10px;
             border-top: 1px solid #ddd;
+            background: #f9f9f9;
         }
         .input-box input {
             flex: 1;
-            padding: 10px;
+            padding: 12px;
             border: none;
             outline: none;
+            border-radius: 6px;
         }
         .input-box button {
-            padding: 10px 20px;
+            padding: 12px 16px;
             background: #007bff;
             color: #fff;
             border: none;
+            border-radius: 6px;
             cursor: pointer;
+            margin-left: 8px;
+            transition: 0.3s;
+        }
+        .input-box button:hover {
+            background: #0056b3;
+        }
+        .loading {
+            color: #999;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
     <div class="chat-container">
-        <div class="chat-box" id="chat-box">
-            <!-- Chat messages will appear here -->
-        </div>
+        <div class="chat-box" id="chat-box"></div>
         <div class="input-box">
             <input type="text" id="user-input" placeholder="Type your message...">
             <button onclick="sendMessage()">Send</button>
@@ -72,53 +92,56 @@
 
     <script>
         async function sendMessage() {
-    const userInput = document.getElementById("user-input");
-    const chatBox = document.getElementById("chat-box");
+            const userInput = document.getElementById("user-input");
+            const chatBox = document.getElementById("chat-box");
+            if (userInput.value.trim() === "") return;
 
-    if (userInput.value.trim() === "") return;
+            // Display user message
+            const userMessage = document.createElement("div");
+            userMessage.className = "chat-message user-message";
+            userMessage.textContent = userInput.value;
+            chatBox.appendChild(userMessage);
 
-    // Display user message
-    const userMessage = document.createElement("div");
-    userMessage.className = "chat-message user-message";
-    userMessage.textContent = userInput.value;
-    chatBox.appendChild(userMessage);
+            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll
 
-    // Clear input
-    const message = userInput.value;
-    userInput.value = "";
+            const message = userInput.value;
+            userInput.value = "";
 
-    try {
-        // Fetch AI response
-        const response = await fetch("/chat", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ message }),
-        });
+            // Show loading message
+            const loadingMessage = document.createElement("div");
+            loadingMessage.className = "chat-message ai-message loading";
+            loadingMessage.textContent = "Thinking...";
+            chatBox.appendChild(loadingMessage);
+            chatBox.scrollTop = chatBox.scrollHeight;
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            try {
+                const response = await fetch("/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message }),
+                });
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                const data = await response.json();
+
+                // Remove loading message
+                chatBox.removeChild(loadingMessage);
+
+                // Display AI response
+                const aiMessage = document.createElement("div");
+                aiMessage.className = "chat-message ai-message";
+                aiMessage.textContent = data.message;
+                chatBox.appendChild(aiMessage);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } catch (error) {
+                console.error("Error:", error);
+                chatBox.removeChild(loadingMessage);
+                const errorMessage = document.createElement("div");
+                errorMessage.className = "chat-message ai-message";
+                errorMessage.textContent = "Sorry, something went wrong. Please try again.";
+                chatBox.appendChild(errorMessage);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
         }
-
-        const data = await response.json();
-
-        // Display AI message
-        const aiMessage = document.createElement("div");
-        aiMessage.className = "chat-message ai-message";
-        aiMessage.textContent = data.message;
-        chatBox.appendChild(aiMessage);
-    } catch (error) {
-        console.error("Error:", error);
-        const errorMessage = document.createElement("div");
-        errorMessage.className = "chat-message ai-message";
-        errorMessage.textContent = "Sorry, something went wrong. Please try again.";
-        chatBox.appendChild(errorMessage);
-    }
-
-    // Scroll to bottom
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
     </script>
 </body>
 </html>
