@@ -55,12 +55,14 @@
             text-align: left;
         }
         .code-snippet {
-            background: #e8e8e8;
+            background: #f5f5f5;
             border-left: 4px solid #007bff;
             padding: 10px;
             overflow-x: auto;
             white-space: pre-wrap;
             border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
         }
         .input-box {
             display: flex;
@@ -111,6 +113,19 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .delete-button {
+            margin-top: 10px;
+            padding: 10px;
+            background: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .delete-button:hover {
+            background: #ff1a1a;
+        }
     </style>
 </head>
 <body>
@@ -121,19 +136,42 @@
             <input type="text" id="user-input" placeholder="Type your message...">
             <button onclick="sendMessage()">Send</button>
         </div>
+        <button class="delete-button" onclick="deleteChat()">Delete Chat</button>
     </div>
 
     <script>
+        // Load chat history from local storage
+        window.onload = function() {
+            const chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            chatHistory.forEach(message => {
+                const chatBox = document.getElementById("chat-box");
+                const messageDiv = document.createElement("div");
+                messageDiv.className = message.isUser ? "chat-message user-message" : "chat-message ai-message";
+                messageDiv.innerHTML = message.text;
+                chatBox.appendChild(messageDiv);
+            });
+            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll
+        };
+
+        function deleteChat() {
+            localStorage.removeItem('chatHistory');
+            document.getElementById("chat-box").innerHTML = ''; // Clear chat box
+        }
+
         async function sendMessage() {
             const userInput = document.getElementById("user-input");
             const chatBox = document.getElementById("chat-box");
             if (userInput.value.trim() === "") return;
 
             // Display user message
-            const userMessage = document.createElement("div");
-            userMessage.className = "chat-message user-message";
-            userMessage.textContent = userInput.value;
-            chatBox.appendChild(userMessage);
+            const userMessage = { text: userInput.value, isUser: true };
+            const userMessageDiv = document.createElement("div");
+            userMessageDiv.className = "chat-message user-message";
+            userMessageDiv.textContent = userInput.value;
+            chatBox.appendChild(userMessageDiv);
+
+            // Save user message to local storage
+            saveMessageToLocalStorage(userMessage);
 
             chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll
 
@@ -159,23 +197,9 @@
                 // Remove loading message
                 chatBox.removeChild(loadingMessage);
 
-                // Display AI response
-                const aiMessage = document.createElement("div");
-                aiMessage.className = "chat-message ai-message";
-
-                // Check if the response contains code
-                if (data.message.startsWith("```")) {
-                    // If it's a code snippet, format it
-                    const codeSnippet = document.createElement("div");
-                    codeSnippet.className = "code-snippet";
-                    codeSnippet.textContent = data.message.replace(/```/g, ''); // Remove the backticks
-                    aiMessage.appendChild(codeSnippet);
-                } else {
-                    aiMessage.textContent = data.message;
-                }
-
-                chatBox.appendChild(aiMessage);
-                chatBox.scrollTop = chatBox.scrollHeight;
+                // Display AI response with typing effect
+                const aiMessage = { text: data.message, isUser: false };
+                await displayTypingEffect(aiMessage, chatBox);
             } catch (error) {
                 console.error("Error:", error);
                 chatBox.removeChild(loadingMessage);
@@ -185,6 +209,34 @@
                 chatBox.appendChild(errorMessage);
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
+        }
+
+        function saveMessageToLocalStorage(message) {
+            const chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            chatHistory.push(message);
+            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+        }
+
+        async function displayTypingEffect(message, chatBox) {
+            const aiMessageDiv = document.createElement("div");
+            aiMessageDiv.className = "chat-message ai-message";
+            chatBox.appendChild(aiMessageDiv);
+
+            // Check if the response contains code
+            if (message.text.startsWith("```")) {
+                const codeSnippet = message.text.replace(/```/g, ''); // Remove the backticks
+                aiMessageDiv.innerHTML = `<pre class="code-snippet"><code>${codeSnippet}</code></pre>`;
+                chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll
+            } else {
+                for (let char of message.text) {
+                    aiMessageDiv.textContent += char; // Append one character at a time
+                    chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll
+                    await new Promise(resolve => setTimeout(resolve, 50)); // Typing delay
+                }
+            }
+
+            // Save AI message to local storage
+            saveMessageToLocalStorage(message);
         }
     </script>
 </body>
